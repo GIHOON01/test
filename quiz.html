@@ -56,17 +56,10 @@
   <h2 class="quiz-title">퀴즈</h2>
   <div class="quiz-content">
     <form action="/submit-quiz" method="POST">
-      <input type="hidden" name="correctOptionNum" value="<%= correctOptionNum %>"> <!-- 정답의 위치 전달 -->
-      <p><%= question %></p>
-      <% options.forEach(function(option) { %>
-        <% if (option.optionValue === correctAnswer) { %>
-          <!-- 정답인 경우 -->
-          <input type="radio" name="answer" value="<%= option.optionNum %>"> <%= option.optionText %><br>
-        <% } else { %>
-          <!-- 오답인 경우 -->
-          <input type="radio" name="answer" value="<%= option.optionNum %>"> <%= option.optionText %><br>
-        <% } %>
-      <% }); %>
+      <p>{{question}}</p>
+      {{#options}}
+      <input type="radio" name="answer" value="{{optionValue}}"> {{optionNum}}번 : {{optionText}}<br>
+      {{/options}}
       <input type="submit" value="제출" class="quiz-button"> <!-- quiz-button 클래스 추가 -->
     </form>
   </div>
