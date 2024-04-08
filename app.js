@@ -1,7 +1,7 @@
 const express = require('express');
 const session = require('express-session');
 const app = express();
-const port = 3000;
+const port = 3001;
 const fs = require('fs');
 const path = require('path'); // path 모듈 추가
 
@@ -30,37 +30,37 @@ function readCountries() {
   }
 }
 
-// 읽어온 데이터베이스를 사용하여 퀴즈를 생성하는 예시 함수
-function generateQuiz(req) {
+function generateQuiz() {
   const countries = readCountries();
   const randomCountryIndex = Math.floor(Math.random() * countries.length);
-  const question = `문제 1. ${countries[randomCountryIndex].country}의 수도는?`;
-  const correctAnswer = countries[randomCountryIndex].capital;
-  const otherOptions = countries
-    .filter((country, index) => index !== randomCountryIndex)
-    .map(country => country.capital);
-  const options = otherOptions.map((option, index) => {
-    return {
-      optionNum: index + 2, // 2번부터 시작 (1번은 정답)
-      optionText: option,
-      optionValue: option // 라디오 버튼의 값으로 사용
-    };
-  });
-  options.unshift({ // 정답을 옵션 배열 맨 앞에 추가
-    optionNum: 1,
-    optionText: correctAnswer,
-    optionValue: correctAnswer
+  const correctCountry = countries[randomCountryIndex];
+  const question = `문제 1. ${correctCountry.country}의 수도는?`;
+  const correctAnswer = correctCountry.capital;
+
+  // 다른 나라들 중에서 임의의 다섯 개를 선택하여 오답으로 사용
+  const otherCountries = countries.filter((country, index) => index !== randomCountryIndex);
+  const wrongOptions = [];
+  while (wrongOptions.length < 5) {
+    const randomIndex = Math.floor(Math.random() * otherCountries.length);
+    wrongOptions.push(otherCountries[randomIndex].capital);
+    otherCountries.splice(randomIndex, 1);
+  }
+
+  // 정답과 오답을 포함한 모든 보기 생성
+  const options = [
+    { optionNum: 1, optionText: correctAnswer, optionValue: correctAnswer }
+  ];
+  wrongOptions.forEach((option, index) => {
+    options.push({ optionNum: index + 2, optionText: option, optionValue: option });
   });
 
-  // 퀴즈 객체에 정답 저장
-  req.session.quiz = {
-    question,
-    options,
-    correctAnswer
-  };
+  // 보기를 랜덤한 순서로 섞기
+  options.sort(() => Math.random() - 0.5);
 
-  return req.session.quiz;
+  // 퀴즈 객체에 정답 추가
+  return { question, options, correctAnswer };
 }
+
 
 app.use(express.static('public'));
 app.use(express.urlencoded({ extended: true })); // 폼 데이터를 파싱하기 위한 미들웨어 추가
@@ -70,21 +70,17 @@ app.get('/', (req, res) => {
 });
 
 app.get('/quiz', (req, res) => {
-  if (!req.session.quiz) {
-    generateQuiz(req);
-  }
-  res.render('quiz', req.session.quiz); // 퀴즈 렌더링
+  const quiz = generateQuiz();
+  res.render('quiz', { question: quiz.question, options: quiz.options, correctAnswer: quiz.correctAnswer }); // correctAnswer를 템플릿으로 전달
 });
 
 app.post('/submit-quiz', (req, res) => {
   const answer = req.body.answer;
-  const correctAnswer = req.session.quiz.correctAnswer;
-
-  // 정답인 경우
+  const correctAnswer = req.body.correctAnswer;
   if (answer === correctAnswer) {
-    res.sendFile(__dirname + '/public/correct.html');
+    res.sendFile(path.join(__dirname, 'public', 'correct.html')); // 정답일 때 정답 페이지 보여주기
   } else {
-    res.sendFile(__dirname + '/public/incorrect.html');
+    res.sendFile(path.join(__dirname, 'public', 'incorrect.html')); // 오답일 때 오답 페이지 보여주기
   }
 });
 
